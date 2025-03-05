@@ -1,0 +1,35 @@
+{
+  "name": "exploring-ddd",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "Exploring Domain-Driven Design (in TypeScript for funsies)",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "check": "tsc",
+    "format": "prettier --write src/"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "hono": "^4.7.4"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "jsxSingleQuote": false,
+    "printWidth": 120,
+    "semi": true,
+    "singleQuote": false,
+    "trailingComma": "all",
+    "useTabs": true
+  }
+}
