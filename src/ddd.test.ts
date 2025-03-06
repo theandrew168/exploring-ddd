@@ -33,8 +33,29 @@ test("can allocate if available equal to required", () => {
 	expect(batch.canAllocate(line)).toBe(true);
 });
 
-test("cannot allocate if sku does not match", () => {
+test("cannot allocate if skus does not match", () => {
 	const batch = new Batch("batch-001", "UNCOMFORTABLE-CHAIR", 100);
 	const differentSkuLine: OrderLine = { orderId: "order-123", sku: "EXPENSIVE-TOASTER", qty: 10 };
 	expect(batch.canAllocate(differentSkuLine)).toBe(false);
 });
+
+test("allocation is idempotent", () => {
+	const [batch, line] = makeBatchAndLine("ANGULAR-DESK", 20, 2);
+	batch.allocate(line);
+	batch.allocate(line);
+	expect(batch.availableQuantity).toBe(18);
+});
+
+test("deallocate", () => {
+	const [batch, line] = makeBatchAndLine("EXPENSIVE-FOOTSTOOL", 20, 2);
+	batch.allocate(line);
+	batch.deallocate(line);
+	expect(batch.availableQuantity).toBe(20);
+});
+
+test("can only deallocate allocated lines", () => {
+	const [batch, unallocatedLine] = makeBatchAndLine("DECORATIVE-TRINKET", 20, 2);
+	batch.deallocate(unallocatedLine);
+	expect(batch.availableQuantity).toBe(20);
+});
+
