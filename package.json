@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
-    "hono": "^4.7.4"
+    "hono": "^4.7.4",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
