@@ -1,6 +1,12 @@
 package ddd
 
-import "time"
+import (
+	"errors"
+	"sort"
+	"time"
+)
+
+var ErrOutOfStock = errors.New("out of stock")
 
 type OrderLine struct {
 	OrderID string
@@ -28,7 +34,18 @@ type Batch struct {
 	allocations  OrderLineSet
 }
 
-func NewBatch(ref, sku string, qty int, eta time.Time) *Batch {
+func NewBatch(ref, sku string, qty int) *Batch {
+	b := Batch{
+		ref: ref,
+		sku: sku,
+
+		purchasedQty: qty,
+		allocations:  make(OrderLineSet),
+	}
+	return &b
+}
+
+func NewBatchWithETA(ref, sku string, qty int, eta time.Time) *Batch {
 	b := Batch{
 		ref: ref,
 		sku: sku,
@@ -38,6 +55,18 @@ func NewBatch(ref, sku string, qty int, eta time.Time) *Batch {
 		allocations:  make(OrderLineSet),
 	}
 	return &b
+}
+
+func (b *Batch) Ref() string {
+	return b.ref
+}
+
+func (b *Batch) SKU() string {
+	return b.sku
+}
+
+func (b *Batch) ETA() time.Time {
+	return b.eta
 }
 
 func (b *Batch) AllocatedQuantity() int {
@@ -68,4 +97,31 @@ func (b *Batch) Allocate(line OrderLine) {
 func (b *Batch) Deallocate(line OrderLine) {
 	// Much nicer than the linear lookup + lodash version in JS.
 	delete(b.allocations, line)
+}
+
+func Allocate(line OrderLine, batches []*Batch) (string, error) {
+	var validBatches []*Batch
+	for _, batch := range batches {
+		if batch.CanAllocate(line) {
+			validBatches = append(validBatches, batch)
+		}
+	}
+
+	if len(validBatches) == 0 {
+		return "", ErrOutOfStock
+	}
+
+	sort.Slice(validBatches, func(i, j int) bool {
+		if validBatches[i].ETA().IsZero() {
+			return true
+		}
+		if validBatches[j].ETA().IsZero() {
+			return false
+		}
+		return validBatches[i].ETA().Before(validBatches[j].ETA())
+	})
+
+	chosenBatch := validBatches[0]
+	chosenBatch.Allocate(line)
+	return chosenBatch.Ref(), nil
 }

@@ -12,13 +12,13 @@ import (
 )
 
 func makeBatchAndLine(sku string, batchQty, lineQty int) (*ddd.Batch, ddd.OrderLine) {
-	batch := ddd.NewBatch("batch-001", sku, batchQty, time.Now())
+	batch := ddd.NewBatch("batch-001", sku, batchQty)
 	line := ddd.NewOrderLine("order-123", sku, lineQty)
 	return batch, line
 }
 
 func TestAllocatingToABatchReducesAvailableQuantity(t *testing.T) {
-	batch := ddd.NewBatch("batch-001", "SMALL-TABLE", 20, time.Now())
+	batch := ddd.NewBatch("batch-001", "SMALL-TABLE", 20)
 	line := ddd.NewOrderLine("order-ref", "SMALL-TABLE", 2)
 
 	batch.Allocate(line)
@@ -42,7 +42,7 @@ func TestCanAllocateIfAvailableEqualsRequired(t *testing.T) {
 }
 
 func TestCannotAllocateIfSKUDoesNotMatch(t *testing.T) {
-	batch := ddd.NewBatch("batch-001", "UNCOMFORTABLE-CHAIR", 100, time.Now())
+	batch := ddd.NewBatch("batch-001", "UNCOMFORTABLE-CHAIR", 100)
 	differentSKULine := ddd.NewOrderLine("order-123", "EXPENSIVE-TOASTER", 10)
 	AssertEqual(t, batch.CanAllocate(differentSKULine), false)
 }
@@ -65,6 +65,46 @@ func TestCanOnlyDeallocateAllocatedLines(t *testing.T) {
 	batch, unallocatedLine := makeBatchAndLine("DECORATIVE-TRINKET", 20, 2)
 	batch.Deallocate(unallocatedLine)
 	AssertEqual(t, batch.AvailableQuantity(), 20)
+}
+
+func TestPrefersCurrentStockBatchesToShipments(t *testing.T) {
+	inStockBatch := ddd.NewBatch("in-stock-batch", "RETRO-CLOCK", 100)
+	shipmentBatch := ddd.NewBatchWithETA("shipment-batch", "RETRO-CLOCK", 100, time.Now().AddDate(0, 0, 1))
+	line := ddd.NewOrderLine("oref", "RETRO-CLOCK", 10)
+
+	ddd.Allocate(line, []*ddd.Batch{inStockBatch, shipmentBatch})
+
+	AssertEqual(t, inStockBatch.AvailableQuantity(), 90)
+	AssertEqual(t, shipmentBatch.AvailableQuantity(), 100)
+}
+
+func TestPrefersEarlierBatches(t *testing.T) {
+	earliest := ddd.NewBatchWithETA("speedy-batch", "MINIMALIST-SPOON", 100, time.Now())
+	medium := ddd.NewBatchWithETA("normal-batch", "MINIMALIST-SPOON", 100, time.Now().AddDate(0, 0, 1))
+	latest := ddd.NewBatchWithETA("slow-batch", "MINIMALIST-SPOON", 100, time.Now().AddDate(0, 0, 2))
+	line := ddd.NewOrderLine("order1", "MINIMALIST-SPOON", 10)
+
+	ddd.Allocate(line, []*ddd.Batch{medium, earliest, latest})
+
+	AssertEqual(t, earliest.AvailableQuantity(), 90)
+	AssertEqual(t, medium.AvailableQuantity(), 100)
+	AssertEqual(t, latest.AvailableQuantity(), 100)
+}
+
+func TestReturnsAllocatedBatchRef(t *testing.T) {
+	inStockBatch := ddd.NewBatch("in-stock-batch-ref", "HIGHBROW-POSTER", 100)
+	shipmentBatch := ddd.NewBatchWithETA("shipment-batch-ref", "HIGHBROW-POSTER", 100, time.Now().AddDate(0, 0, 1))
+	line := ddd.NewOrderLine("oref", "HIGHBROW-POSTER", 10)
+	allocation, _ := ddd.Allocate(line, []*ddd.Batch{inStockBatch, shipmentBatch})
+	AssertEqual(t, allocation, inStockBatch.Ref())
+}
+
+func TestReturnsOutOfStockErrorIfCannotAllocate(t *testing.T) {
+	batch := ddd.NewBatchWithETA("batch1", "SMALL-FORK", 10, time.Now())
+	ddd.Allocate(ddd.NewOrderLine("order1", "SMALL-FORK", 10), []*ddd.Batch{batch})
+
+	_, err := ddd.Allocate(ddd.NewOrderLine("order2", "SMALL-FORK", 1), []*ddd.Batch{batch})
+	AssertErrorIs(t, err, ddd.ErrOutOfStock)
 }
 
 func AssertEqual(t *testing.T, got, want any) {
