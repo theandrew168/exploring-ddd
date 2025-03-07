@@ -1,5 +1,7 @@
 import _ from "lodash";
 
+// Does there even exist a nice way to represent value objects in JS?
+// Objects are always compared by reference, so we can't utilize sets.
 export type OrderLine = {
 	orderId: string;
 	sku: string;
@@ -19,6 +21,10 @@ export class Batch {
 		this.eta = eta;
 
 		this.purchasedQuantity = qty;
+
+		// It's really painful that JS lacks a way to create "compare by value"
+		// objects. If we could, then this could simply be a set. Instead, we let
+		// it be an array and have to implement our own comparison logic (via _.isEqual).
 		this.allocations = [];
 	}
 
@@ -35,6 +41,7 @@ export class Batch {
 			return;
 		}
 
+		// Linear lookups every time... makes me sad.
 		const index = this.allocations.findIndex((l) => _.isEqual(l, line));
 		if (index === -1) {
 			this.allocations.push(line);
@@ -42,6 +49,7 @@ export class Batch {
 	}
 
 	deallocate(line: OrderLine) {
+		// Linear lookups every time... makes me sad.
 		const index = this.allocations.findIndex((l) => _.isEqual(l, line));
 		if (index !== -1) {
 			this.allocations.splice(index, 1);

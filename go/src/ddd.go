@@ -16,6 +16,7 @@ func NewOrderLine(orderID, sku string, qty int) OrderLine {
 	}
 }
 
+// Ayy, we can use a set store OrderLines since structs (values, not pointers) are compared by value!
 type OrderLineSet map[OrderLine]struct{}
 
 type Batch struct {
@@ -60,9 +61,11 @@ func (b *Batch) Allocate(line OrderLine) {
 		return
 	}
 
+	// Much nicer than the linear lookup + lodash version in JS.
 	b.allocations[line] = struct{}{}
 }
 
 func (b *Batch) Deallocate(line OrderLine) {
+	// Much nicer than the linear lookup + lodash version in JS.
 	delete(b.allocations, line)
 }
